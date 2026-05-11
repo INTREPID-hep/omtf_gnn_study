@@ -1,4 +1,3 @@
-[README.md](https://github.com/user-attachments/files/27594865/README.md)
 # OMTF GMT — FP32 Validation Baseline
 
 **TPS EdgeCompat h64 + G7/G8/G9/G10 hard negatives**
