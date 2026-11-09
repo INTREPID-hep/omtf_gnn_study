@@ -1,5 +1,5 @@
 universe    = vanilla
-initialdir  = /lhome/ext/uovi156/uovi1562/gnn_dse_hls
+initialdir = $ENV(PWD)
 should_transfer_files = NO
 getenv = True
 request_cpus   = 4
@@ -7,11 +7,9 @@ request_memory = 24G
 request_disk   = 4G
 request_gpus   = 1
 +UseNvidiaA100 = True
-log    = /lhome/ext/uovi156/uovi1562/gnn_dse_hls/build/condor/g9g10_train.$(Cluster).$(Process).log
-output = /lhome/ext/uovi156/uovi1562/gnn_dse_hls/build/condor/g9g10_train.$(Cluster).$(Process).out
-error  = /lhome/ext/uovi156/uovi1562/gnn_dse_hls/build/condor/g9g10_train.$(Cluster).$(Process).err
+log    = build/condor/g9g10_train.$(Cluster).$(Process).log
+output = build/condor/g9g10_train.$(Cluster).$(Process).out
+error  = build/condor/g9g10_train.$(Cluster).$(Process).err
 
-executable = $(script)
-queue script from (
-  /lhome/ext/uovi156/uovi1562/gnn_dse_hls/pipeline/train_runc.sh
-)
+executable = pipeline/train_runc.sh
+queue
