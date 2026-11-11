@@ -10,6 +10,7 @@ Each sample contains:
   gen_pt       (K,)       float32  — gen-muon pT, slot-ordered
   gen_charge   (K,)       float32
   gen_dxy      (K,)       float32
+  gen_lxy      (K,)       float32
   meta: event, processor, n_stubs, n_gen, source
 
 Nmax and K_MAX are configurable; defaults match the OMTF-internal branch.
@@ -115,6 +116,7 @@ class GMTCachedDataset(Dataset):
             gpt_l.append(s["gen_pt"])
             gc_l.append(s["gen_charge"])
             gd_l.append(s["gen_dxy"])
+            gl_l.append(s["gen_Lxy"])
             men_l.append(s["meta_event_num"])
             mip_l.append(s["meta_i_proc"])
             mns_l.append(s["meta_n_stubs"])
@@ -130,6 +132,7 @@ class GMTCachedDataset(Dataset):
         self.gen_pt       = torch.cat(gpt_l)
         self.gen_charge   = torch.cat(gc_l)
         self.gen_dxy      = torch.cat(gd_l)
+        self.gen_Lxy      = torch.cat(gl_l)
         self.meta_event   = torch.cat(men_l)
         self.meta_proc    = torch.cat(mip_l)
         self.meta_n_stubs = torch.cat(mns_l)
@@ -150,6 +153,7 @@ class GMTCachedDataset(Dataset):
             "gen_pt":       self.gen_pt[idx],
             "gen_charge":   self.gen_charge[idx],
             "gen_dxy":      self.gen_dxy[idx],
+            "gen_Lxy":      self.gen_Lxy[idx],
             "meta": {
                 "event_num":    int(self.meta_event[idx]),
                 "i_processor":  int(self.meta_proc[idx]),
@@ -180,5 +184,6 @@ def collate_gmt(batch: list[dict]) -> dict:
         "gen_pt":       torch.stack([b["gen_pt"] for b in batch]),
         "gen_charge":   torch.stack([b["gen_charge"] for b in batch]),
         "gen_dxy":      torch.stack([b["gen_dxy"] for b in batch]),
+        "gen_Lxy":      torch.stack([b["gen_Lxy"] for b in batch]),
         "meta":         [b["meta"] for b in batch],
     }

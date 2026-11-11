@@ -23,6 +23,7 @@ Output schema — identical to KMTF cache (reusable with train.py / eval_gmt.py)
   gen_pt           (N, K)        float32
   gen_charge       (N, K)        float32
   gen_dxy          (N, K)        float32
+  gen_Lxy          (N, K)        float32
   target_track_id  (N, K)        int8
   meta_event_num   (N,)          int32
   meta_i_proc      (N,)          int32
@@ -112,7 +113,7 @@ TPS_BRANCHES_REQUIRED = [
     "MuonStubTps_tfLayer",       "MuonStubTps_depthRegion",
     "MuonStubTps_stubType",
 ]
-TPS_BRANCHES_OPTIONAL = ["GenMuon_dXY"]
+TPS_BRANCHES_OPTIONAL = ["GenMuon_dXY","GenMuon_lXY"]
 
 
 # ----- TPS truth transfer --------------------------------------------------
@@ -167,11 +168,12 @@ def _transfer_tps(
 # ----- file-level builder --------------------------------------------------
 
 def _load_nano_event_map(nano_path: Path) -> dict[int, dict]:
-    """Return dict: uint32(event) → {gen_pt, gen_charge, gen_dxy, tps_stubs}."""
+    """Return dict: uint32(event) → {gen_pt, gen_charge, gen_dxy, gen_Lxy, tps_stubs}."""
     tree = uproot.open(str(nano_path))["Events"]
     available = set(tree.keys())
     branches  = TPS_BRANCHES_REQUIRED + [b for b in TPS_BRANCHES_OPTIONAL if b in available]
     has_dxy   = "GenMuon_dXY" in available
+    has_Lxy   = "GenMuon_lXY" in available
     arr = tree.arrays(branches, library="ak")
 
     event_map: dict[int, dict] = {}
@@ -183,6 +185,8 @@ def _load_nano_event_map(nano_path: Path) -> dict[int, dict]:
         gen_ch_full  = ak.to_numpy(arr["GenMuon_charge"][i]).astype(np.float32)
         gen_dxy_full = (ak.to_numpy(arr["GenMuon_dXY"][i]).astype(np.float32)
                         if has_dxy else np.zeros(n_gen, dtype=np.float32))
+        gen_Lxy_full = (ak.to_numpy(arr["GenMuon_lXY"][i]).astype(np.float32)
+                        if has_Lxy else np.zeros(n_gen, dtype=np.float32))
 
         c1  = ak.to_numpy(arr["MuonStubTps_offlineCoord1"][i]).astype(np.float64)
         c2  = ak.to_numpy(arr["MuonStubTps_offlineCoord2"][i]).astype(np.float32)
@@ -199,6 +203,7 @@ def _load_nano_event_map(nano_path: Path) -> dict[int, dict]:
             "gen_pt_full":     gen_pt_full,
             "gen_charge_full": gen_ch_full,
             "gen_dxy_full":    gen_dxy_full,
+            "gen_Lxy_full":    gen_Lxy_full,
             "tps": {
                 "c1": c1, "c2": c2, "e1": e1, "e2": e2,
                 "q": q, "eq": eq, "bx": bx, "lay": lay, "dep": dep, "sty": sty,
@@ -274,18 +279,21 @@ def _process_omtf_entry(
     gen_pt     = np.zeros(_K_MAX, dtype=np.float32)
     gen_charge = np.zeros(_K_MAX, dtype=np.float32)
     gen_dxy    = np.zeros(_K_MAX, dtype=np.float32)
+    gen_Lxy    = np.zeros(_K_MAX, dtype=np.float32)
     tgt_tid    = np.zeros(_K_MAX, dtype=np.int8)
 
     if not is_hard_neg:
         pt_full  = nano_ev["gen_pt_full"]
         ch_full  = nano_ev["gen_charge_full"]
         dxy_full = nano_ev["gen_dxy_full"]
+        Lxy_full = nano_ev["gen_Lxy_full"]
         for slot, tid_val in enumerate(positive_ids[:_K_MAX]):
             idx = tid_val - 1
             if idx < len(pt_full):
                 gen_pt[slot]     = pt_full[idx]
                 gen_charge[slot] = ch_full[idx]
                 gen_dxy[slot]    = dxy_full[idx]
+                gen_Lxy[slot]    = Lxy_full[idx]
             tgt_tid[slot] = tid_val
 
     # 6. pad to Nmax
@@ -313,6 +321,7 @@ def _process_omtf_entry(
         "gen_pt":          torch.from_numpy(gen_pt),
         "gen_charge":      torch.from_numpy(gen_charge),
         "gen_dxy":         torch.from_numpy(gen_dxy),
+        "gen_Lxy":         torch.from_numpy(gen_Lxy),
         "target_track_id": torch.from_numpy(tgt_tid),
         "meta_event_num":    torch.tensor(event_num,            dtype=torch.int32),
         "meta_i_proc":       torch.tensor(proc,                 dtype=torch.int32),
@@ -326,7 +335,7 @@ def _stack_shard(samples: list[dict]) -> dict:
     keys_tensor = [
         "stubs", "valid_mask", "track_id", "ambiguous",
         "node_label", "truth_source",
-        "gen_pt", "gen_charge", "gen_dxy", "target_track_id",
+        "gen_pt", "gen_charge", "gen_dxy",  "gen_Lxy", "target_track_id",
     ]
     keys_scalar = [
         "meta_event_num", "meta_i_proc", "meta_n_stubs",

@@ -25,6 +25,8 @@ artifacts/
   plots/
     presentation/       43 study plots  (hn025 baseline)
     das_validation/     7 DAS external validation plots  (Run A)
+data/                   to be linked to /lustre/ific.uv.es/ml/uovi156/data (location of stored tuples) during setup
+build/                  files to log condor submission + network trainings and other builds
 requirements.txt
 README.md
 ```
@@ -44,7 +46,20 @@ README.md
 
 See `artifacts/models/g9g10_runa_frozen/README.md` for full metrics.
 
+Note that new models will be built in the `build` directory. Please keep `artifacts/` for frozen models in GitHub.
+
 ---
+## Initial setup
+```bash
+git clone https://github.com/INTREPID-hep/omtf_gnn_study.git
+# Use your own fork of the repository if you want to edit the code and push
+cd omtf_gnn_study
+# Make a soft link to the tuples already produced with https://github.com/INTREPID-hep/omtf_dataset_production
+ln -s /lustre/ific.uv.es/ml/uovi156/data/ data
+# Create directory for logs of batch submission
+mkdir build/condor
+```
+
 
 ## How to reconstruct from scratch
 
@@ -167,3 +182,40 @@ Raw ROOT files (omtf_hits + omtf_nano pairs) are expected at:
 - `data/das_prod/` — DAS external validation samples
 
 See `docs/omtf/ROOT_BRANCHES.md` for the NanoAOD branch schema.
+
+
+
+
+---
+## Model Architectures and Dataset Preparation
+
+### Model Architectures
+The model architectures are defined in **`src/omtf_gmt/models.py`**. The following architectures are already available:
+   Model               | Description                                                                 | Usage                          |
+ |---------------------|-----------------------------------------------------------------------------|--------------------------------|
+ | `EdgeCompat`        | Graph-compatible model with edge features (default for this study)         | `train.py --model edge_compat` |
+ | `DeepSets`          | Permutation-invariant model using Deep Sets                                  | `train.py --model deepsets`     |
+ | `SlotModel`         | Slot-based model for candidate prediction                                   | `train.py --model slot_model`   |
+ | `EdgeCompatAssign`  | EdgeCompat with attention-based assignment                                 | `train.py --model edge_compat_assign` |
+
+**Key files:**
+- **`src/omtf_gmt/models.py`**: Model definitions (e.g., `build_edge_compat`, `build_deepsets`).
+- **`src/omtf_gmt/features_tps.py`**: Node feature scheme for TPS stubs.
+- **`src/omtf_gmt/dataset.py`**: Dataset class (`GMTCachedDataset`) and ordering logic.
+
+### Dataset Schema and Features
+
+- **Location**:
+  - Dataset construction: [`scripts/make_dataset.py`](scripts/make_dataset.py)
+  - Dataset loading: [`src/omtf_gmt/dataset.py`](src/omtf_gmt/dataset.py)
+  - Feature definitions: [`src/omtf_gmt/features_tps.py`](src/omtf_gmt/features_tps.py)
+
+### Training and Evaluation
+- **Location**:
+  - Training: [`src/omtf_gmt/train.py`](src/omtf_gmt/train.py) 
+  - Evaluation: [`scripts/eval.py`](scripts/eval.py), [`scripts/eval_das_filtered.py`](scripts/eval_das_filtered.py)
+
+### Plotting and Analysis
+- **Location**: [`scripts/make_das_plots.py`](scripts/make_das_plots.py)
+
+---
