@@ -102,7 +102,7 @@ class GMTCachedDataset(Dataset):
         self._validate_manifest(cache_dir, dataset)
 
         stubs_l, vm_l, tid_l, amb_l, nl_l, ts_l = [], [], [], [], [], []
-        gpt_l, gc_l, gd_l = [], [], []
+        gpt_l, gc_l, gd_l, gl_l = [], [], [], []
         men_l, mip_l, mns_l, mng_l, mhn_l = [], [], [], [], []
 
         for p in sorted((cache_dir / dataset).glob("shard_*.pt")):
